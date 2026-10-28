@@ -1,7 +1,28 @@
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+import logging
+
 from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
 
+from mcp_server.data.fetch import ZIP_PATH, refresh
+from mcp_server.data.store import DataStore
+
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def app_lifespan(server: MCPServer) -> AsyncGenerator[DataStore]:
+    logger.info(f"changed: {refresh()}")
+
+    store = DataStore(ZIP_PATH)
+    for name, df in vars(store).items():
+        logger.info(f"{name}: {df.shape}")
+
+    yield store
+
 
 mcp = MCPServer(
     "epoch-ai-datacenters",
@@ -13,4 +34,5 @@ mcp = MCPServer(
         "Answer only from what the tools return. If the dataset doesn't cover something, say so instead of filling the gap from general knowledge.\n"
         "Whenever you reproduce or summarize the data, attribute it to Epoch AI (CC BY 4.0).\n"
     ),
+    lifespan=app_lifespan
 )
