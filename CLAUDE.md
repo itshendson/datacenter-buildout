@@ -23,3 +23,7 @@ Figures are estimates (Epoch's stated 80% intervals: ~1.4x for IT power, ~1.5x f
 
 ## Conventions
 - Tracing and metrics use OpenTelemetry.
+
+## Evals
+- Golden dataset: `evals/golden_dataset.jsonl`, answers computed from `data/data_centers.zip`.
+- When the server downloads a new zip, the golden_dataset will need to be updated as well. Regenerate the answers with `uv run python -m evals.build_golden_dataset` and review what changed.
