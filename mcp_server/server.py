@@ -1,6 +1,6 @@
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-import logging
 
 from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
@@ -8,7 +8,7 @@ from mcp.types import ToolAnnotations
 from mcp_server.data.fetch import ZIP_PATH, refresh
 from mcp_server.data.store import DataStore
 
-READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
+READ_ONLY = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False)
 
 logger = logging.getLogger(__name__)
 
