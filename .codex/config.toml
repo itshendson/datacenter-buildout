@@ -1,0 +1,11 @@
+[mcp_servers.epoch-datacenters]
+command = "uv"
+args = [
+    "run",
+    "python",
+    "-m",
+    "mcp_server",
+]
+
+[mcp_servers.epoch-datacenters.env]
+SSLKEYLOGFILE = ""
