@@ -18,7 +18,7 @@ CONFIDENCE_TAGS = (
 )
 
 
-class DataCenterRecord(BaseModel):
+class LookupResult(BaseModel):
     # Current state, from data_centers
     name: str = Field(description="Name of the datacenter")
     owner: str | None = Field(description=f"The owner of the datacenter. {CONFIDENCE_TAGS}")
@@ -59,7 +59,7 @@ def lookup(
         ))
     ],
     ctx: Context
-) -> DataCenterRecord:
+) -> LookupResult:
     """Get the profile of one data center by name: owner, users, location, current IT power,
     compute (H100e), capital cost, chip counts, and buildout status with its next projected milestone.
 
@@ -77,7 +77,7 @@ def lookup(
     matches = store.data_centers[mask]
 
     if len(matches) == 0:
-        suggestions = close_names(dc_name, names.tolist())
+        suggestions = _close_names(dc_name, names.tolist())
         if suggestions:
             raise ToolError(
                 f"No data center matches '{dc_name}'. "
@@ -108,35 +108,35 @@ def lookup(
     ]
     chip_counts = chips.sort_values("Date").groupby("Chip type")["Number of Units"].last()
 
-    return DataCenterRecord(
+    return LookupResult(
         name=name,
-        owner=cell(row, "Owner"),
-        users=cell(row, "Users"),
-        project=cell(row, "Project"),
-        country=cell(row, "Country"),
-        address=cell(row, "Address"),
+        owner=_cell(row, "Owner"),
+        users=_cell(row, "Users"),
+        project=_cell(row, "Project"),
+        country=_cell(row, "Country"),
+        address=_cell(row, "Address"),
         current_power_mw=current_power,
-        current_h100e=cell(row, "Current H100 equivalents"),
-        current_capital_cost_usd_billions=cell(row, "Current total capital cost (2025 USD billions)"),
-        current_chip_types=cell(row, "Current chip types"),
-        investors=cell(row, "Investors"),
-        construction_companies=cell(row, "Construction companies"),
-        energy_companies=cell(row, "Energy companies"),
+        current_h100e=_cell(row, "Current H100 equivalents"),
+        current_capital_cost_usd_billions=_cell(row, "Current total capital cost (2025 USD billions)"),
+        current_chip_types=_cell(row, "Current chip types"),
+        investors=_cell(row, "Investors"),
+        construction_companies=_cell(row, "Construction companies"),
+        energy_companies=_cell(row, "Energy companies"),
         buildout_start=timeline["Date"].min().date(),
         status_as_of=past["Date"].max().date(),
         next_milestone_date=None if next_milestone is None else next_milestone["Date"].date(),
-        next_milestone_power_mw=None if next_milestone is None else cell(next_milestone, "IT power (MW)"),
+        next_milestone_power_mw=None if next_milestone is None else _cell(next_milestone, "IT power (MW)"),
         chip_counts={chip: int(units) for chip, units in chip_counts.items()},
     )
 
 
-def cell(row: pd.Series, column: str):
+def _cell(row: pd.Series, column: str):
     """The row's value in column, or None if the cell is empty (pandas stores those as NaN)."""
     value = row[column]
     return None if pd.isna(value) else value
 
 
-def close_names(query: str, names: list[str]) -> list[str]:
+def _close_names(query: str, names: list[str]) -> list[str]:
     """Up to 3 names that look like a misspelling of query, best first."""
 
     def score(name: str) -> float:
