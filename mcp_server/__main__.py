@@ -3,5 +3,6 @@ import mcp_server.tools.lookup
 import mcp_server.tools.query_data_centers
 import mcp_server.tools.query_timeline
 import mcp_server.tools.query_chillers
+import mcp_server.tools.query_cooling_towers
 
 mcp.run()
