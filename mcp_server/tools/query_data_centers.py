@@ -29,11 +29,16 @@ class QueryResult(BaseModel):
         description=(
             "The answer. list and rank: one dict per data center with all its columns. "
             "count: [{'count': n}]. sum: [{metric: total}]. "
-            "With group_by: one dict per group, e.g. {'owner': 'Google #confident', 'power_mw': 2100}."
+            "With group_by: one dict per group, e.g. {'owner': 'Google', 'power_mw': 2100}. "
+            "Owner groups merge all confidence tags."
         )
     )
-    total_rows: int = Field(description="Number of data centers that matched the filters, before limit")
-    message: str | None = Field(description="Set when results were cut off by limit, e.g. 'Showing 20 of 77.'")
+    total_rows: int = Field(
+        description="Number of data centers that matched the filters, before limit"
+    )
+    message: str | None = Field(
+        description="Set when results were cut off by limit, e.g. 'Showing 20 of 77.'"
+    )
     notes: str = Field(
         default=(
             "All figures are Epoch AI estimates (80% intervals: ~1.4x for power, ~1.5x for compute, "
@@ -201,7 +206,15 @@ def query_data_centers(
 
     # Rows with an empty group column (e.g. data centers with no owner) go in an "Unknown"
     # group, since pandas would otherwise drop them and grouped totals would come up short.
-    groups = df[GROUP_COLUMNS[group_by]].fillna("Unknown") if group_by else None
+    # The confidence tag is stripped so "Google #confident" and "Google #speculative" land
+    # in one "Google" group instead of splitting its total.
+    groups = (
+        df[GROUP_COLUMNS[group_by]]
+        .fillna("Unknown")
+        .str.replace(r"\s*#\w+$", "", regex=True)
+        if group_by
+        else None
+    )
 
     # Operations on data
     if operation == "list":
@@ -218,7 +231,9 @@ def query_data_centers(
             rows = [{"count": len(df)}]
     elif operation == "rank":
         if not metric:
-            raise ToolError(f"{operation} requires metric: 'power_mw', 'h100e' or 'capital_cost'.")
+            raise ToolError(
+                f"{operation} requires metric: 'power_mw', 'h100e' or 'capital_cost'."
+            )
         if group_by:
             totals = df.groupby(groups)[METRIC_COLUMNS[metric]].sum().nlargest(limit)
             rows = [{group_by: key, metric: value} for key, value in totals.items()]
@@ -226,13 +241,18 @@ def query_data_centers(
             rows = df.nlargest(limit, METRIC_COLUMNS[metric]).to_dict("records")
     elif operation == "sum":
         if not metric:
-            raise ToolError(f"{operation} requires metric: 'power_mw', 'h100e' or 'capital_cost'.")
+            raise ToolError(
+                f"{operation} requires metric: 'power_mw', 'h100e' or 'capital_cost'."
+            )
         if group_by:
-            totals = df.groupby(groups)[METRIC_COLUMNS[metric]].sum().sort_values(ascending=False)
+            totals = (
+                df.groupby(groups)[METRIC_COLUMNS[metric]]
+                .sum()
+                .sort_values(ascending=False)
+            )
             rows = [{group_by: key, metric: value} for key, value in totals.items()]
         else:
             rows = [{metric: df[METRIC_COLUMNS[metric]].sum()}]
-
 
     return QueryResult(
         rows=rows,
