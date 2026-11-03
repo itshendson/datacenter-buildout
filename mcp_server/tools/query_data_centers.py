@@ -24,7 +24,7 @@ GROUP_COLUMNS = {
 }
 
 
-class QueryResult(BaseModel):
+class DataCenterResult(BaseModel):
     rows: list[dict] = Field(
         description=(
             "The answer. list and rank: one dict per data center with all its columns. "
@@ -173,7 +173,7 @@ def query_data_centers(
         int, Field(ge=1, le=100, description="Maximum rows to return.")
     ] = 20,
     ctx: Context = None,
-) -> QueryResult:
+) -> DataCenterResult:
     """Find data centers by their attributes, then list, count, sum or rank them.
 
     Use for questions across many data centers, e.g. "which data centers does Microsoft own",
@@ -254,7 +254,7 @@ def query_data_centers(
         else:
             rows = [{metric: df[METRIC_COLUMNS[metric]].sum()}]
 
-    return QueryResult(
+    return DataCenterResult(
         rows=rows,
         total_rows=len(df),
         message=message,
