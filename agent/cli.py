@@ -19,14 +19,15 @@ import shlex
 import sys
 from pathlib import Path
 
-import anthropic
 from mcp import Client, StdioServerParameters, stdio_client
 from mcp.shared.exceptions import MCPError
 
-from agent.agent import Agent, list_claude_tools
+from agent.agent import Agent, list_tools, system_prompt
+from agent.providers import make_provider
+from agent.providers.base import Message, ProviderError, UserMessage
 
 DEFAULT_PROVIDER = "anthropic"
-DEFAULT_MODEL = "claude-sonnet-5-5"
+DEFAULT_MODELS = {"anthropic": "claude-sonnet-5-5", "ollama": "qwen3"}
 
 DEFAULT_SERVER_COMMAND = "uv run python -m mcp_server"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -43,11 +44,10 @@ async def run(
     ) as errlog:
         async with Client(stdio_client(server, errlog=errlog)) as mcp_client:
             agent = Agent(
-                provider=provider,
+                provider=make_provider(provider, model, effort),
                 client=mcp_client,
-                tools=await list_claude_tools(mcp_client),
-                model=model,
-                effort=effort,
+                tools=await list_tools(mcp_client),
+                system=system_prompt(mcp_client.instructions),
             )
 
             print(f"MCP server with Epoch AI dataset - {provider} {model}. Effort {effort}.\n")
@@ -60,7 +60,7 @@ def show_tool_call(name: str, arguments: dict) -> None:
 
 
 async def chat(agent: Agent) -> None:
-    messages: list[dict] = []  # the whole conversation, kept across user messages
+    messages: list[Message] = []  # the whole conversation, kept across user messages
     while True:
         try:
             text = input("you> ").strip()
@@ -73,12 +73,12 @@ async def chat(agent: Agent) -> None:
             continue
 
         before = len(messages)
-        messages.append({"role": "user", "content": text})
+        messages.append(UserMessage(text))
         try:
             reply = await agent.run_turn(messages, on_tool_call=show_tool_call)
-        except anthropic.APIError as e:
+        except ProviderError as e:
             del messages[before:]
-            print(f"  (Claude API error: {e})\n")
+            print(f"  ({e})\n")
             continue
         if reply.stop_reason == "max_model_calls":
             print("  (stopped: too many steps for one message)")
@@ -96,7 +96,8 @@ def main():
         help=f"Provider (default {DEFAULT_PROVIDER}).",
     )
     parser.add_argument(
-        "--model", default=DEFAULT_MODEL, help=f"Model (default {DEFAULT_MODEL})."
+        "--model",
+        help=f"Model (default {DEFAULT_MODELS['anthropic']} for anthropic, {DEFAULT_MODELS['ollama']} for ollama).",
     )
     parser.add_argument(
         "--effort",
@@ -116,6 +117,8 @@ def main():
     )
 
     args = parser.parse_args()
+    if args.model is None:
+        args.model = DEFAULT_MODELS[args.provider]
 
     if args.provider == "anthropic" and not (
         os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")
