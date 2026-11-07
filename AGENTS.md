@@ -24,6 +24,18 @@ Figures are estimates (Epoch's stated 80% intervals: ~1.4x for IT power, ~1.5x f
 ## Conventions
 - Tracing and metrics use OpenTelemetry.
 
+## Observability
+
+Requires `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`.
+
+Start the local Aspire dashboard:
+
+```powershell
+docker run --rm -d --name aspire-dashboard -p 127.0.0.1:18888:18888 -p 127.0.0.1:4318:18890 -e ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true mcr.microsoft.com/dotnet/aspire-dashboard:latest
+```
+
+Open `http://localhost:18888`.
+
 ## Evals
 - Golden dataset: `evals/golden_dataset.jsonl`, answers computed from `data/data_centers.zip`.
 - When the server downloads a new zip, the golden_dataset will need to be updated as well. Regenerate the answers with `uv run python -m evals.build_golden_dataset` and review what changed.

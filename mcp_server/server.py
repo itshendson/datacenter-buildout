@@ -11,7 +11,7 @@ from mcp_server.data.store import DataStore
 READ_ONLY = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False)
 
 logger = logging.getLogger(__name__)
-
+logger.setLevel(logging.INFO)
 
 @asynccontextmanager
 async def app_lifespan(server: MCPServer) -> AsyncGenerator[DataStore]:

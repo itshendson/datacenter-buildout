@@ -47,6 +47,10 @@ class AnthropicProvider(Provider):
         except anthropic.APIError as e:
             raise ProviderError(f"Claude API error: {e}") from e
 
+        usage = response.usage
+        cache_read = usage.cache_read_input_tokens or 0
+        cache_write = usage.cache_creation_input_tokens or 0
+
         return ModelReply(
             text="".join(block.text for block in response.content if block.type == "text"),
             tool_calls=[
@@ -55,6 +59,8 @@ class AnthropicProvider(Provider):
                 if block.type == "tool_use"
             ],
             stop_reason=STOP_REASONS.get(response.stop_reason, response.stop_reason),
+            input_tokens=usage.input_tokens + cache_read + cache_write,
+            output_tokens=usage.output_tokens,
             raw=response.content,
         )
 

@@ -53,6 +53,8 @@ class OllamaProvider(Provider):
             text=response.message.content or "",
             tool_calls=tool_calls,
             stop_reason=stop_reason,
+            input_tokens=response.prompt_eval_count,
+            output_tokens=response.eval_count,
         )
 
 

@@ -42,6 +42,8 @@ class ModelReply:
     text: str
     tool_calls: list[ToolCall] = field(default_factory=list)
     stop_reason: str = "end"  # "end", "tool_calls", "max_tokens", or "refusal"
+    input_tokens: int | None = None
+    output_tokens: int | None = None
     # The provider's own copy of this reply, so it can be sent back unchanged on the
     # next call. Claude needs this: its replies carry thinking blocks that must be
     # returned exactly as they came. Providers that don't need it leave it as None.

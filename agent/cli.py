@@ -38,7 +38,17 @@ async def run(
 ) -> None:
     """Start the MCP server subprocess, build the agent, then initiate the agent loop"""
     command, *args = shlex.split(server_command)
-    server = StdioServerParameters(command=command, args=args, cwd=PROJECT_ROOT)
+    server = StdioServerParameters(
+        command=command,
+        args=args,
+        cwd=PROJECT_ROOT,
+        env={
+            "OTEL_EXPORTER_OTLP_ENDPOINT": os.environ.get(
+                "OTEL_EXPORTER_OTLP_ENDPOINT",
+                "",
+            ),
+        },
+    )
     with (
         contextlib.nullcontext(sys.stderr) if show_server_log else open(os.devnull, "w")
     ) as errlog:
@@ -50,7 +60,9 @@ async def run(
                 system=system_prompt(mcp_client.instructions),
             )
 
-            print(f"MCP server with Epoch AI dataset - {provider} {model}. Effort {effort}.\n")
+            print(
+                f"MCP server with Epoch AI dataset - {provider} {model}. Effort {effort}.\n"
+            )
             await chat(agent)
 
 
@@ -64,7 +76,7 @@ async def chat(agent: Agent) -> None:
     while True:
         try:
             text = input("you> ").strip()
-        except (EOFError, KeyboardInterrupt):
+        except EOFError, KeyboardInterrupt:
             print()
             return
         if text.lower() in {"exit", "quit"}:
@@ -128,7 +140,15 @@ def main():
         )
 
     try:
-        asyncio.run(run(args.provider, args.model, args.effort, args.server, args.show_server_log))
+        asyncio.run(
+            run(
+                args.provider,
+                args.model,
+                args.effort,
+                args.server,
+                args.show_server_log,
+            )
+        )
     except* KeyboardInterrupt:
         print("Process was cancelled.")
     except* FileNotFoundError:

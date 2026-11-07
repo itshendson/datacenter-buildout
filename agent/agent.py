@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from mcp import Client
 from mcp.shared.exceptions import MCPError
 from mcp.types import CallToolResult
+from opentelemetry import trace
+from opentelemetry.trace import StatusCode
 
 from agent.providers.base import (
     Message,
@@ -30,6 +32,8 @@ MAX_MODEL_CALLS = 20
 SYSTEM = """You answer questions about AI data center buildout: IT power, capital cost, chips
 and compute, construction timelines, and cooling. Look up the data with the tools; make as
 many tool calls as the question needs before answering. Keep answers concise."""
+
+tracer = trace.get_tracer(__name__)
 
 
 def system_prompt(server_instructions: str | None) -> str:
@@ -72,31 +76,63 @@ class Agent:
 
         Raises ProviderError if a model call fails.
         """
-        for _ in range(MAX_MODEL_CALLS):
-            reply = await self.provider.reply(self.system, messages, self.tools)
-            messages.append(reply)
+        with tracer.start_as_current_span(
+            "invoke_agent",
+            attributes={"gen_ai.operation.name": "invoke_agent"},
+        ):
+            for _ in range(MAX_MODEL_CALLS):
+                with tracer.start_as_current_span("provider.reply") as span:
+                    reply = await self.provider.reply(
+                        self.system, messages, self.tools
+                    )
 
-            if not reply.tool_calls:
-                return reply
+                    if reply.input_tokens is not None:
+                        span.set_attribute(
+                            "gen_ai.usage.input_tokens", reply.input_tokens
+                        )
+                    if reply.output_tokens is not None:
+                        span.set_attribute(
+                            "gen_ai.usage.output_tokens", reply.output_tokens
+                        )
 
-            for call in reply.tool_calls:
-                on_tool_call(call.name, call.arguments)
-                messages.append(await self.run_tool(call))
+                messages.append(reply)
+                if not reply.tool_calls:
+                    return reply
 
-        return ModelReply(text="", stop_reason="max_model_calls")
+                for call in reply.tool_calls:
+                    on_tool_call(call.name, call.arguments)
+                    messages.append(await self.run_tool(call))
+
+            return ModelReply(text="", stop_reason="max_model_calls")
 
     async def run_tool(self, call: ToolCall) -> ToolResult:
         """Run one tool on the MCP server. A failure becomes an error result the model can read
         and react to (e.g. fix its arguments), instead of ending the chat."""
-        try:
-            result = await self.client.call_tool(call.name, call.arguments)
-        except MCPError as e:
+        with tracer.start_as_current_span(
+            f"execute_tool {call.name}",
+            attributes={
+                "gen_ai.operation.name": "execute_tool",
+                "gen_ai.tool.name": call.name,
+            },
+        ) as span:
+            try:
+                result = await self.client.call_tool(call.name, call.arguments)
+            except MCPError as e:
+                error_type = type(e).__name__
+                span.record_exception(e)
+                span.set_attribute("error.type", error_type)
+                span.set_status(StatusCode.ERROR)
+
+                return ToolResult(
+                    call.id, call.name, f"Tool call failed: {e}", is_error=True
+                )
+
+            if result.is_error:
+                span.set_attribute("error.type", "tool_error")
+                span.set_status(StatusCode.ERROR)
             return ToolResult(
-                call.id, call.name, f"Tool call failed: {e}", is_error=True
+                call.id, call.name, result_text(result), is_error=result.is_error
             )
-        return ToolResult(
-            call.id, call.name, result_text(result), is_error=result.is_error
-        )
 
 
 def result_text(result: CallToolResult) -> str:
