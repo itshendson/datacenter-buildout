@@ -125,7 +125,7 @@ def main():
     parser.add_argument(
         "--show-server-log",
         action="store_true",
-        help="Show the server's log output (dataset update checks, loaded tables, warnings).",
+        help="Show the server's log output (loaded tables, warnings).",
     )
 
     args = parser.parse_args()

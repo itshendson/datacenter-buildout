@@ -1,6 +1,9 @@
 # Project Overview
 An AI agent app for AI data center buildout analysis. An MCP server exposes tools over Epoch AI's data center dataset, and a user prompts an LLM to retrieve data and run analysis (IT power, capex, GPUs/compute, timelines, etc.).
 
+## Learning workflow
+When `learn-build-review` is invoked, present the scope analysis at the start. If the full analysis would be too long, begin with its four-group scope map as a concise list. Before asking for clarification or a scope decision, expand the relevant items with dependencies, what remains unavailable if omitted, approximate code footprint, a 1–5 mental-overload rating, and the new concepts involved. Rate overload higher when the work introduces more new concepts or when those concepts are more difficult or interact. Use this rating instead of an implementation-time estimate.
+
 ## How the user interacts
 Both paths share one MCP server:
 - **Path A:** Codex → MCP server
@@ -38,4 +41,4 @@ Open `http://localhost:18888`.
 
 ## Evals
 - Golden dataset: `evals/golden_dataset.jsonl`, answers computed from `data/data_centers.zip`.
-- When the server downloads a new zip, the golden_dataset will need to be updated as well. Regenerate the answers with `uv run python -m evals.build_golden_dataset` and review what changed.
+- The server never downloads data on its own, so the zip only changes when you update it. To update: fetch the newest zip with `uv run python -m mcp_server.data.fetch`, regenerate the answers with `uv run python -m evals.build_golden_dataset`, and review what changed. The eval refuses to run if the golden dataset doesn't match the zip.

@@ -82,6 +82,7 @@ class Agent:
         ):
             for _ in range(MAX_MODEL_CALLS):
                 with tracer.start_as_current_span("provider.reply") as span:
+                    # Message the model itself
                     reply = await self.provider.reply(
                         self.system, messages, self.tools
                     )

@@ -1,0 +1,36 @@
+{
+  "provider": "anthropic",
+  "model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "judge_model": "claude-opus-5-5",
+  "judge_effort": "medium",
+  "data_sha256": "92a73bcb5e171c4663d81c08e111274c94f3bf73de39e81c7e57bd6cd5bead44",
+  "tasks": [
+    {
+      "id": "lookup-pryor-chips",
+      "judge_reason": "The answer names TPU v5e and TPU v5p, which matches the expected set exactly. It also credits the data to Epoch AI, so the attribution rule is met. The extra unit counts and as-of date do not conflict with the expected answer.",
+      "passed": true,
+      "expected_ok": true,
+      "rubric_ok": true,
+      "error": null,
+      "answer": "At Google Pryor (North), Epoch AI estimates two chip types are installed:\n\n- **TPU v5e:** about 78,000 units\n- **TPU v5p:** about 23,000 units\n\nThat is roughly 101,000 chips in total. The tool's as-of date is 2026-11-10. These counts are estimates.\n\nSource: Epoch AI, AI Data Centers (CC BY 4.0).",
+      "stop_reason": "end",
+      "tool_call_count": 1,
+      "tool_errors": 0,
+      "tool_calls": [
+        {
+          "name": "query_installed_chips",
+          "arguments": {
+            "dc_name": "Google Pryor (North)",
+            "group_by": "chip_type"
+          },
+          "is_error": false,
+          "result": "{\n  \"rows\": [\n    {\n      \"chip_type\": \"TPU v5e\",\n      \"units\": 77886\n    },\n    {\n      \"chip_type\": \"TPU v5p\",\n      \"units\": 23466\n    }\n  ],\n  \"total_units\": 101352,\n  \"as_of\": \"2026-11-10\",\n  \"message\": null,\n  \"notes\": \"Unit counts are Epoch AI estimates. Counts after today are Epoch's projections. Data: Epoch AI, AI Data Centers, CC BY 4.0.\"\n}"
+        }
+      ],
+      "input_tokens": 16914,
+      "output_tokens": 222,
+      "seconds": 3.250720600015484
+    }
+  ]
+}

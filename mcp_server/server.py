@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 
 @asynccontextmanager
 async def app_lifespan(server: MCPServer) -> AsyncGenerator[DataStore]:
-    logger.info(f"changed: {refresh()}")
+    # logger.info(f"changed: {refresh()}")
 
     store = DataStore(ZIP_PATH)
     for name, df in vars(store).items():
