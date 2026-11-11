@@ -8,5 +8,8 @@ import mcp_server.tools.query_data_centers
 import mcp_server.tools.query_installed_chips
 import mcp_server.tools.query_timeline  # noqa: F401
 from evals.run_eval import main
+from observability.otel import configure_telemetry
+
+configure_telemetry("datacenter-evals")
 
 asyncio.run(main())
