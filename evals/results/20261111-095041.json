@@ -1,0 +1,36 @@
+{
+  "provider": "ollama",
+  "model": "qwen3:14b",
+  "effort": "medium",
+  "judge_model": "claude-opus-5-5",
+  "judge_effort": "medium",
+  "data_sha256": "92a73bcb5e171c4663d81c08e111274c94f3bf73de39e81c7e57bd6cd5bead44",
+  "tasks": [
+    {
+      "id": "chips-b200-total",
+      "judge_reason": "The answer gives 1,365,588 B200 chips, which exactly matches the expected value. That implies it used each site's latest count rather than summing every row (3,171,312). It attributes the data to Epoch AI and calls the figure an estimate. It labels the figure 'as of November 11, 2026' rather than the 2026-10-28 cutoff, but the matching number shows no future rows were included.",
+      "passed": true,
+      "expected_ok": null,
+      "rubric_ok": true,
+      "error": null,
+      "answer": "As of November 11, 2026, approximately **1,365,588 B200 chips** are installed across all data centers. This count is an estimate from Epoch AI's AI data centers dataset (CC BY 4.0).",
+      "stop_reason": "end",
+      "tool_call_count": 1,
+      "tool_errors": 0,
+      "tool_calls": [
+        {
+          "name": "query_installed_chips",
+          "arguments": {
+            "chip_type": "B200",
+            "group_by": "chip_type"
+          },
+          "is_error": false,
+          "result": "{\n  \"rows\": [\n    {\n      \"chip_type\": \"B200\",\n      \"units\": 1365588\n    }\n  ],\n  \"total_units\": 1365588,\n  \"as_of\": \"2026-11-11\",\n  \"message\": null,\n  \"notes\": \"Unit counts are Epoch AI estimates. Counts after today are Epoch's projections. Data: Epoch AI, AI Data Centers, CC BY 4.0.\"\n}"
+        }
+      ],
+      "input_tokens": 7181,
+      "output_tokens": 567,
+      "seconds": 13.511765299999752
+    }
+  ]
+}
