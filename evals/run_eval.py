@@ -12,7 +12,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import anthropic
@@ -30,7 +30,7 @@ from agent.providers.base import (
     UserMessage,
 )
 from mcp_server.data.fetch import ZIP_PATH
-from mcp_server.server import mcp
+from mcp_server.server import TODAY_ENV, mcp
 
 JUDGE_MODEL = "claude-opus-5-5"
 JUDGE_EFFORT = "medium"
@@ -184,6 +184,14 @@ async def main() -> None:
         sys.exit(f"Golden dataset is out of date for: {', '.join(stale)}. "
                  "Regenerate it with: uv run python -m evals.build_golden_dataset")
 
+    # The golden answers were computed for one day (as_of). Pin "today" to that day for both the
+    # tools and the agent's prompt, so "right now" questions don't drift as real days pass.
+    as_of_dates = {t["as_of"] for t in tasks}
+    if len(as_of_dates) != 1:
+        sys.exit(f"Expected one as_of date across the tasks, found: {sorted(as_of_dates) or 'no tasks'}.")
+    as_of = as_of_dates.pop()
+    os.environ[TODAY_ENV] = as_of
+
     # Output result location
     results_dir = Path(__file__).parent / "results"
     results_dir.mkdir(exist_ok=True)
@@ -199,10 +207,10 @@ async def main() -> None:
             ),
             client=mcp_client,
             tools=tools,
-            system=system_prompt(mcp_client.instructions),
+            system=system_prompt(mcp_client.instructions, today=date.fromisoformat(as_of)),
         )
         print(
-            f"{len(tasks)} tasks · evaluating model {args.model} {args.effort} · judge {JUDGE_MODEL} {JUDGE_EFFORT}"
+            f"{len(tasks)} tasks · evaluating model {args.model} {args.effort} · judge {JUDGE_MODEL} {JUDGE_EFFORT} · today pinned to {as_of}"
         )
         rows = []
         for task in tasks:
@@ -215,6 +223,7 @@ async def main() -> None:
             "judge_model": JUDGE_MODEL,
             "judge_effort": JUDGE_EFFORT,
             "data_sha256": dataset_hash,
+            "as_of": as_of,
             "tasks": rows
         }
         results_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")

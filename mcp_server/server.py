@@ -1,7 +1,9 @@
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import pandas as pd
 from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
 
@@ -12,6 +14,17 @@ READ_ONLY = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_worl
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+# An eval sets this to the golden dataset's date (e.g. "2026-10-28"). Tools then treat that day
+# as today, so the same zip gives the same answers whichever day the eval runs.
+TODAY_ENV = "EVAL_TODAY"
+
+
+def get_today() -> pd.Timestamp:
+    """The day tools treat as today: EVAL_TODAY if it's set, otherwise the computer's clock."""
+    pinned = os.environ.get(TODAY_ENV)
+    return pd.Timestamp(pinned) if pinned else pd.Timestamp.today().normalize()
+
 
 @asynccontextmanager
 async def app_lifespan(server: MCPServer) -> AsyncGenerator[DataStore]:

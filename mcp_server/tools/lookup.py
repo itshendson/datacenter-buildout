@@ -10,7 +10,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, Field
 
 from mcp_server.data.store import DataStore
-from mcp_server.server import READ_ONLY, mcp
+from mcp_server.server import READ_ONLY, get_today, mcp
 
 CONFIDENCE_TAGS = (
     "Tagged #confident, #likely or #speculative; report the tag, and don't state "
@@ -101,7 +101,7 @@ def lookup(
 
     row = matches.iloc[0]
     name = row["Name"]
-    today = pd.Timestamp.today().normalize()
+    today = get_today()
 
     # Timeline rows after today are Epoch's projections.
     timeline = store.timelines[store.timelines["Data center"] == name].sort_values("Date")

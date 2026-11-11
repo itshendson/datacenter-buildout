@@ -39,3 +39,4 @@ Open `http://localhost:18888`.
 ## Evals
 - Golden dataset: `evals/golden_dataset.jsonl`, answers computed from `data/data_centers.zip`.
 - The server never downloads data on its own, so the zip only changes when you update it. To update: fetch the newest zip with `uv run python -m mcp_server.data.fetch`, regenerate the answers with `uv run python -m evals.build_golden_dataset`, and review what changed. The eval refuses to run if the golden dataset doesn't match the zip.
+- The golden answers are computed for one day (`AS_OF` in `evals/build_golden_dataset.py`, stored as `as_of` on each case). During an eval run, the tools and the agent's prompt use that day as "today" (the eval sets `EVAL_TODAY`), so results don't change with the day the eval runs.

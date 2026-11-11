@@ -37,9 +37,9 @@ many tool calls as the question needs before answering. Keep answers concise."""
 tracer = trace.get_tracer(__name__)
 
 
-def system_prompt(server_instructions: str | None) -> str:
+def system_prompt(server_instructions: str | None, today: date | None = None) -> str:
     """The agent's role, today's date, plus the MCP server's instructions, if it sent any."""
-    base = f"{SYSTEM}\n\nToday's date is {date.today().isoformat()}."
+    base = f"{SYSTEM}\n\nToday's date is {(today or date.today()).isoformat()}."
     if not server_instructions:
         return base
     return f"{base}\n\n{server_instructions}"

@@ -8,7 +8,7 @@ from mcp.server.mcpserver import Context
 from pydantic import BaseModel, Field
 
 from mcp_server.data.store import DataStore
-from mcp_server.server import READ_ONLY, mcp
+from mcp_server.server import READ_ONLY, get_today, mcp
 from mcp_server.tools.query_timeline import _match_name
 
 # The group_by names the model can pass, and the chip_quantities column each one reads.
@@ -71,7 +71,7 @@ def query_installed_chips(
     For chip specs (TDP, memory, H100e per chip), use query_chips.
     """
     store: DataStore = ctx.request_context.lifespan_context
-    day = pd.Timestamp(date) if date else pd.Timestamp.today().normalize()
+    day = pd.Timestamp(date) if date else get_today()
 
     chips = store.chip_quantities[store.chip_quantities["Date"] <= day]
     if dc_name:
