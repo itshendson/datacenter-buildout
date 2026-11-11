@@ -27,6 +27,9 @@ class LookupResult(BaseModel):
     country: str = Field(description="Country where the data center is located")
     address: str | None = Field(description="Street address")
     current_power_mw: float = Field(description="Current IT power in megawatts. Estimate.")
+    current_facility_power_mw: float | None = Field(
+        description="Current total facility power in megawatts: IT power plus cooling and other overhead. Estimate."
+    )
     current_h100e: float = Field(description="Current compute in H100 equivalents. Estimate.")
     current_capital_cost_usd_billions: float = Field(description="Current total capital cost, 2025 USD billions. Estimate.")
     current_chip_types: str | None = Field(description="Chip types installed now, comma-separated")
@@ -40,6 +43,10 @@ class LookupResult(BaseModel):
     next_milestone_date: date | None = Field(description="Next projected date when IT power changes, or null if none is projected")
     next_milestone_power_mw: float | None = Field(description="IT power in megawatts projected at the next milestone. Estimate.")
     chip_counts: dict[str, int] = Field(description="Installed units per chip type as of status_as_of, e.g. {'B300': 100800}. Estimate.")
+    water_use_mgd: float | None = Field(
+        description="Latest recorded water use in million gallons per day, or null if Epoch has no record for this data center. Estimate."
+    )
+    water_use_as_of: date | None = Field(description="Date of the water use record; report it with the figure")
 
     notes: str = Field(
         default=(
@@ -61,7 +68,8 @@ def lookup(
     ctx: Context
 ) -> LookupResult:
     """Get the profile of one data center by name: owner, users, location, current IT power,
-    compute (H100e), capital cost, chip counts, and buildout status with its next projected milestone.
+    total facility power, compute (H100e), capital cost, chip counts, water use, and buildout
+    status with its next projected milestone.
 
     Use when the question is about a specific data center. Not for finding data centers by
     owner, country or other attributes (e.g. "which data centers does Microsoft own"): names
@@ -102,6 +110,10 @@ def lookup(
     upcoming = timeline[(timeline["Date"] > today) & (timeline["IT power (MW)"] != current_power)]
     next_milestone = upcoming.iloc[0] if len(upcoming) else None
 
+    # Water use is filled in on only some timeline rows, so take the latest row that has it.
+    water = past[past["Water use (MGD)"].notna()]
+    latest_water = water.iloc[-1] if len(water) else None
+
     # Unit counts are cumulative, so the latest row per chip type is the installed total.
     chips = store.chip_quantities[
         (store.chip_quantities["Data center"] == name) & (store.chip_quantities["Date"] <= today)
@@ -116,6 +128,7 @@ def lookup(
         country=_cell(row, "Country"),
         address=_cell(row, "Address"),
         current_power_mw=current_power,
+        current_facility_power_mw=_cell(past.iloc[-1], "Power (MW)"),
         current_h100e=_cell(row, "Current H100 equivalents"),
         current_capital_cost_usd_billions=_cell(row, "Current total capital cost (2025 USD billions)"),
         current_chip_types=_cell(row, "Current chip types"),
@@ -127,6 +140,8 @@ def lookup(
         next_milestone_date=None if next_milestone is None else next_milestone["Date"].date(),
         next_milestone_power_mw=None if next_milestone is None else _cell(next_milestone, "IT power (MW)"),
         chip_counts={chip: int(units) for chip, units in chip_counts.items()},
+        water_use_mgd=None if latest_water is None else latest_water["Water use (MGD)"],
+        water_use_as_of=None if latest_water is None else latest_water["Date"].date(),
     )
 
 
