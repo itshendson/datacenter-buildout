@@ -15,6 +15,8 @@ from agent.providers.base import (
     UserMessage,
 )
 
+CONTEXT_TOKENS = 16384
+
 
 class OllamaProvider(Provider):
     def __init__(self, model: str) -> None:
@@ -29,6 +31,7 @@ class OllamaProvider(Provider):
                 model=self.model,
                 messages=[{"role": "system", "content": system}, *to_ollama_messages(messages)],
                 tools=[to_ollama_tool(tool) for tool in tools],
+                options={"num_ctx": CONTEXT_TOKENS},
             )
         except (ollama.ResponseError, ollama.RequestError, ConnectionError) as e:
             raise ProviderError(f"Ollama error: {e}") from e
