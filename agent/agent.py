@@ -9,6 +9,7 @@ to it in place, so the next user message continues the same conversation.
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 
 from mcp import Client
 from mcp.shared.exceptions import MCPError
@@ -37,10 +38,11 @@ tracer = trace.get_tracer(__name__)
 
 
 def system_prompt(server_instructions: str | None) -> str:
-    """The agent's role plus the MCP server's instructions, if it sent any."""
+    """The agent's role, today's date, plus the MCP server's instructions, if it sent any."""
+    base = f"{SYSTEM}\n\nToday's date is {date.today().isoformat()}."
     if not server_instructions:
-        return SYSTEM
-    return f"{SYSTEM}\n\n{server_instructions}"
+        return base
+    return f"{base}\n\n{server_instructions}"
 
 
 async def list_tools(client: Client) -> list[ToolSpec]:
