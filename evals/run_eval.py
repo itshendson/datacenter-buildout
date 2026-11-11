@@ -158,6 +158,7 @@ async def main() -> None:
     parser.add_argument("--provider", default=DEFAULT_PROVIDER, choices=["anthropic", "ollama"], help="Provider of the model being evaluated.")
     parser.add_argument("--model", help="Model being evaluated. Default depends on --provider.")
     parser.add_argument("--effort", default="medium", choices=["low", "medium", "high", "xhigh", "max"])
+    parser.add_argument("--min-pass-rate", type=float, default=0.9, help="Fail the run if the fraction of passed tasks is below this (0.0 to 1.0).")
     args = parser.parse_args()
 
     if args.model is None:
@@ -230,6 +231,9 @@ async def main() -> None:
         passed = sum(row["passed"]for row in rows)
         print(f"Passed {passed}/{len(rows)}")
         print(f"\nResults: {results_path}")
+
+        if passed /len(rows) < args.min_pass_rate:
+            sys.exit(f"Pass rate {passed}/{len(rows)} is below the minimum of {args.min_pass_rate:.0%}.")
 
 def stale_task_ids(tasks: list[dict], dataset_hash: str) -> list[str]:
     return [t["id"] for t in tasks if t["data_sha256"] != dataset_hash]
