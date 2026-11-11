@@ -42,8 +42,11 @@ OUTPUT_PATH = EVALS_DIR / "golden_dataset.jsonl"
 AS_OF = pd.Timestamp("2026-10-28")
 
 # Only absorbs rounding. The agent reads the same CSV we do, so Epoch's ~1.4-1.6x
-# estimate intervals don't belong here.
-REL_TOL = 0.01
+# estimate intervals don't belong here. The server tells the agent to avoid false precision,
+# so answers are often rounded to two figures ("about 16 million" for 15.77M, 1.5% off);
+# 2.5% allows that while staying well under the ~8% gaps between answers the eval must tell
+# apart (e.g. Meta's 2,335 MW total vs 2,155 MW confirmed).
+REL_TOL = 0.025
 
 # Added to the rubric of every case that reports figures from the data.
 ATTRIBUTION = "Attributes the data to Epoch AI."
