@@ -32,14 +32,24 @@ from pathlib import Path
 
 import pandas as pd
 
-from mcp_server.data.fetch import ZIP_PATH
+from mcp_server.data.fetch import META_PATH, ZIP_PATH
 from mcp_server.data.store import DataStore
 
 EVALS_DIR = Path(__file__).resolve().parent
 OUTPUT_PATH = EVALS_DIR / "golden_dataset.jsonl"
 
+
+def download_date() -> pd.Timestamp:
+    """The day the zip was downloaded, from the meta.json the fetch writes alongside it."""
+    if not META_PATH.exists():
+        raise SystemExit(f"{META_PATH} is missing. Fetch the data first: uv run python -m mcp_server.data.fetch")
+    downloaded_at = json.loads(META_PATH.read_text())["downloaded_at"]
+    return pd.Timestamp(downloaded_at).tz_localize(None).normalize()
+
+
 # The day the zip was downloaded. Epoch's "Current ..." columns mean "as of this date".
-AS_OF = pd.Timestamp("2026-10-28")
+# Read from meta.json rather than typed, so a fetch and rebuild always use the right day.
+AS_OF = download_date()
 
 # Only absorbs rounding. The agent reads the same CSV we do, so Epoch's ~1.4-1.6x
 # estimate intervals don't belong here. The server tells the agent to avoid false precision,
