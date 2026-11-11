@@ -30,7 +30,10 @@ class DataCenterResult(BaseModel):
             "The answer. list and rank: one dict per data center with all its columns. "
             "count: [{'count': n}]. sum: [{metric: total}]. "
             "With group_by: one dict per group, e.g. {'owner': 'Google', 'power_mw': 2100}. "
-            "Owner groups merge all confidence tags."
+            "Owner groups merge all confidence tags. "
+            "When unconfirmed_included isn't empty, count, sum and grouped rank rows also split the total, "
+            "e.g. {'power_mw': 3179.0, 'confirmed_power_mw': 2941.0, 'unconfirmed_power_mw': 238.0}: "
+            "3179 in total, made up of 2941 confirmed and 238 unconfirmed."
         )
     )
     total_rows: int = Field(
@@ -38,6 +41,16 @@ class DataCenterResult(BaseModel):
     )
     message: str | None = Field(
         description="Set when results were cut off by limit, e.g. 'Showing 20 of 77.'"
+    )
+    unconfirmed_included: list[dict] = Field(
+        default=[],
+        description=(
+            "For count, sum and grouped rank: data centers that ARE included in rows' totals, but whose "
+            "tag for the filtered or grouped owner, user or project isn't #confident (#likely, "
+            "#speculative, or no tag). Name them, say they're already in the total, and say how much "
+            "of it they make up, e.g. {'name': 'QTS Cedar Rapids', 'owner': 'Meta #speculative', "
+            "'power_mw': 0.0}."
+        ),
     )
     notes: str = Field(
         default=(
@@ -254,11 +267,64 @@ def query_data_centers(
         else:
             rows = [{metric: df[METRIC_COLUMNS[metric]].sum()}]
 
+    # list and ungrouped rank return whole rows, tags included. The other operations collapse
+    # rows into numbers, so name the data centers whose tag would otherwise be hidden.
+    unconfirmed = []
+    if operation in ("count", "sum") or (operation == "rank" and group_by):
+        checked = {"owner": owner, "users": users, "project": project}
+        if group_by == "owner":
+            checked["owner"] = checked["owner"] or ""  # "" matches every owner
+        unconfirmed = _unconfirmed(df, checked, metric)
+
+    # Split each total into its confirmed and unconfirmed parts, so the model reads both as part of
+    # the total rather than adding the unconfirmed on top, and never has to subtract, e.g.
+    # {'power_mw': 3179.0, 'confirmed_power_mw': 2941.0, 'unconfirmed_power_mw': 238.0}.
+    if unconfirmed:
+        flagged = df["Name"].isin({site["name"] for site in unconfirmed})
+        for row in rows:
+            mask = flagged & (groups == row[group_by]) if group_by else flagged
+            if operation == "count":
+                row["confirmed_count"] = row["count"] - int(mask.sum())
+                row["unconfirmed_count"] = int(mask.sum())
+            else:
+                unconfirmed_value = float(df.loc[mask, METRIC_COLUMNS[metric]].sum())
+                row[f"confirmed_{metric}"] = row[metric] - unconfirmed_value
+                row[f"unconfirmed_{metric}"] = unconfirmed_value
+
     return DataCenterResult(
         rows=rows,
         total_rows=len(df),
         message=message,
+        unconfirmed_included=unconfirmed,
     )
+
+
+def _unconfirmed(df: pd.DataFrame, checked: dict[str, str | None], metric: str | None) -> list[dict]:
+    """Data centers whose tag for a checked company isn't #confident.
+
+    `checked` maps 'owner', 'users' and 'project' to the company the caller filtered on, or None to
+    skip that column. A cell can name several companies ('OpenAI #likely, Microsoft #confident'),
+    so only the part naming that company is read.
+    """
+    found = []
+    for key, company in checked.items():
+        if company is None:
+            continue
+        column = key.capitalize()
+        for _, row in df.iterrows():
+            cell = row[column]
+            if pd.isna(cell):
+                continue
+            part = next((p.strip() for p in cell.split(",") if company.lower() in p.lower()), None)
+            if part is None or part.endswith("#confident"):
+                continue
+            if "#" not in part:
+                part += " (no confidence tag)"  # e.g. 'Google' alone; don't let it read as confirmed
+            entry = {"name": row["Name"], key: part}
+            if metric:
+                entry[metric] = row[METRIC_COLUMNS[metric]]
+            found.append(entry)
+    return found
 
 
 def _filter_data_centers(
