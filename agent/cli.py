@@ -27,7 +27,7 @@ from agent.providers import make_provider
 from agent.providers.base import Message, ProviderError, UserMessage
 
 DEFAULT_PROVIDER = "anthropic"
-DEFAULT_MODELS = {"anthropic": "claude-sonnet-5-5", "ollama": "qwen3"}
+DEFAULT_MODELS = {"anthropic": "claude-sonnet-5-5", "ollama": "qwen3:14b"}
 
 DEFAULT_SERVER_COMMAND = "uv run python -m mcp_server"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
